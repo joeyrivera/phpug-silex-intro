@@ -33,14 +33,14 @@ $app->error(function (\Exception $e) use ($app) {
  * handle authentication
  */
 // authenticate
-$app->before(function(\Symfony\Component\HttpFoundation\Request $request) use ($app) {
+//$app->before(function(\Symfony\Component\HttpFoundation\Request $request) use ($app) {
 //	$token = $request->query->getAlnum('token', null);
 //
 //	if (empty($token)) {
 //		throw new \Exception("Not authenticated", 401);
 //	}
 //
-//	$user = $app['doctrine']->getRepository('Cgaa\Api\Model\Entity\User')->findOneBy([
+//	$user = $app['doctrine']->getRepository('App\Entity\User')->findOneBy([
 //		'token' => $token
 //	]);
 //
@@ -49,11 +49,30 @@ $app->before(function(\Symfony\Component\HttpFoundation\Request $request) use ($
 //	}
 //
 //	$app['user'] = $user;
-});
+//});
 
 /**
  * handle endpoints
  */
+$app->get('/users', function (Silex\Application $app) {
+	$users = $app['doctrine']->getRepository('App\Entity\User')->findAll();
+
+	if (empty($users)) {
+		throw new \InvalidArgumentException("No users found", 404);
+	}
+
+	$data = [];
+	foreach ($users as $user) {
+		$data[] = [
+			'id' => $user->getId(),
+			'firstName' => $user->getFirstName(),
+			'lastName' => $user->getLastName()
+		];
+	}
+
+	return $app->json($data);
+});
+
 $app->get('/users/{id}', function (Silex\Application $app, $id) {
 	$user = $app['doctrine']->getRepository('App\Entity\User')->find($id);
 
@@ -68,6 +87,44 @@ $app->get('/users/{id}', function (Silex\Application $app, $id) {
 	]);
 });
 
+$app->post('/users', function (Silex\Application $app, \Symfony\Component\HttpFoundation\Request $request) {
+	$user = new \App\Entity\User();
+	$user->setFirstName($request->get('firstName'));
+	$user->setLastName($request->get('lastName'));
+
+	$app['doctrine']->persist($user);
+	$app['doctrine']->flush();
+
+	return $app->json([
+		'id' => $user->getId(),
+		'firstName' => $user->getFirstName(),
+		'lastName' => $user->getLastName()
+	]);
+});
+
+$app->put('/users/{id}', function (Silex\Application $app, \Symfony\Component\HttpFoundation\Request $request, $id) {
+	$user = $app['doctrine']->getRepository('App\Entity\User')->find($id);
+	$user->setFirstName($request->get('firstName'));
+	$user->setLastName($request->get('lastName'));
+
+	$app['doctrine']->merge($user);
+	$app['doctrine']->flush();
+
+	return $app->json([
+		'id' => $user->getId(),
+		'firstName' => $user->getFirstName(),
+		'lastName' => $user->getLastName()
+	]);
+});
+
+$app->delete('/users/{id}', function (Silex\Application $app, $id) {
+	$user = $app['doctrine']->getRepository('App\Entity\User')->find($id);
+
+	$app['doctrine']->remove($user);
+	$app['doctrine']->flush();
+
+	return $app->json([]);
+});
 
 
 return $app;
